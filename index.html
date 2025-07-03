@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Kule Savunma Oyunu</title>
+<style>
+  body { background:#000; margin:0; overflow:hidden; color:white; font-family:sans-serif; }
+  #info { position:absolute; top:10px; left:10px; }
+  canvas { background:#222; display:block; margin:0 auto; }
+</style>
+</head>
+<body>
+<canvas id="game" width="800" height="600"></canvas>
+<div id="info"></div>
+<script>
+'use strict';
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const info = document.getElementById('info');
+const FPS = 60;
+const TOWER_TYPES = [createBasicTower, createFastTower, createHeavyTower];
+const ENEMY_TYPES = [createBasicEnemy, createFastEnemy, createTankEnemy];
+let towers = [];
+let enemies = [];
+let projectiles = [];
+let selectedTower = 0;
+let wave = 0;
+let lastTime = performance.now();
+
+function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+// Enemy constructor
+function Enemy(hp, speed, color){
+  this.x = 0;
+  this.y = canvas.height/2;
+  this.hp = hp;
+  this.speed = speed;
+  this.color = color;
+  this.size = 20;
+}
+Enemy.prototype.update = function(dt){
+  if(this.x < canvas.width){
+    this.x += this.speed * dt;
+  } else {
+    this.dead = true; // Reached end
+  }
+};
+Enemy.prototype.draw = function(){
+  ctx.fillStyle = this.color;
+  ctx.fillRect(this.x-this.size/2, this.y-this.size/2, this.size, this.size);
+};
+
+// Tower constructor
+function Tower(x,y,range,damage,fireRate,color){
+  this.x=x; this.y=y; this.range=range; this.damage=damage;
+  this.fireRate=fireRate; this.lastShot=0; this.level=1; this.color=color;
+}
+Tower.prototype.upgrade = function(){
+  this.level++; this.damage++; this.range+=10;
+};
+Tower.prototype.update = function(dt){
+  this.lastShot += dt;
+  if(this.lastShot >= this.fireRate){
+    let target=null, closest=this.range;
+    for(let e of enemies){
+      const dx=e.x-this.x, dy=e.y-this.y;
+      const dist=Math.hypot(dx,dy);
+      if(dist<=closest){ closest=dist; target=e; }
+    }
+    if(target){
+      projectiles.push(new Projectile(this.x,this.y,target,this.damage));
+      this.lastShot=0;
+    }
+  }
+};
+Tower.prototype.draw = function(){
+  ctx.fillStyle=this.color;
+  ctx.fillRect(this.x-20,this.y-20,40,40);
+};
+
+// Projectile constructor
+function Projectile(x,y,target,damage){
+  this.x=x; this.y=y; this.target=target; this.damage=damage; this.speed=300;
+}
+Projectile.prototype.update = function(dt){
+  if(!this.target || this.target.dead){ this.dead=true; return; }
+  const dx=this.target.x-this.x, dy=this.target.y-this.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist<=this.speed*dt){
+    this.target.hp-=this.damage;
+    if(this.target.hp<=0){ this.target.dead=true; }
+    this.dead=true;
+  } else {
+    this.x+=dx/dist*this.speed*dt;
+    this.y+=dy/dist*this.speed*dt;
+  }
+};
+Projectile.prototype.draw = function(){
+  ctx.fillStyle='red';
+  ctx.fillRect(this.x-2.5,this.y-2.5,5,5);
+};
+
+// Factory functions
+function createBasicTower(x,y){ return new Tower(x,y,120,1,0.8,'purple'); }
+function createFastTower(x,y){ return new Tower(x,y,100,1,0.3,'lime'); }
+function createHeavyTower(x,y){ return new Tower(x,y,150,2,1.2,'pink'); }
+
+function createBasicEnemy(){ return new Enemy(3,50,'cyan'); }
+function createFastEnemy(){ return new Enemy(2,80,'yellow'); }
+function createTankEnemy(){ return new Enemy(5,30,'magenta'); }
+
+function spawnWave(n){
+  let count=5+n;
+  for(let i=0;i<count;i++){
+    let e=randChoice(ENEMY_TYPES)();
+    e.hp+=n; e.speed+=n*2; e.x-=i*40;
+    enemies.push(e);
+  }
+}
+
+function gameLoop(timestamp){
+  const dt=(timestamp-lastTime)/1000;
+  lastTime=timestamp;
+  update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function update(dt){
+  for(let t of towers) t.update(dt);
+  for(let p of projectiles) p.update(dt);
+  for(let e of enemies) e.update(dt);
+  enemies=enemies.filter(e=>!e.dead);
+  projectiles=projectiles.filter(p=>!p.dead);
+}
+
+function draw(){
+  ctx.fillStyle='black';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle='white';
+  ctx.lineWidth=5;
+  ctx.beginPath();
+  ctx.moveTo(0,canvas.height/2);
+  ctx.lineTo(canvas.width,canvas.height/2);
+  ctx.stroke();
+
+  for(let t of towers) t.draw();
+  for(let e of enemies) e.draw();
+  for(let p of projectiles) p.draw();
+
+  info.textContent=`Dalga ${wave} | Kule: ${towers.length} | Dusman: ${enemies.length}`;
+}
+
+canvas.addEventListener('mousedown',function(e){
+  const rect=canvas.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  const y=e.clientY-rect.top;
+  if(e.button===0){
+    towers.push(TOWER_TYPES[selectedTower](x,y));
+  } else if(e.button===2){
+    for(let t of towers){
+      if(x>=t.x-20 && x<=t.x+20 && y>=t.y-20 && y<=t.y+20){ t.upgrade(); break; }
+    }
+  }
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+window.addEventListener('keydown',function(e){
+  if(e.code==='Escape') return;
+  if(e.code==='Space'){ wave++; spawnWave(wave); }
+  else if(e.code==='Tab'){ e.preventDefault(); selectedTower=(selectedTower+1)%TOWER_TYPES.length; }
+});
+
+spawnWave(wave);
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
