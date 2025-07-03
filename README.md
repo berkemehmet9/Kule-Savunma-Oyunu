@@ -1,23 +1,14 @@
 # Kule Savunma Oyunu
 
-Bu projede Python ve `pygame` kullanılarak basit bir kule savunma oyunu örneği bulunmaktadır. Farklı düşman ve kule tipleri içerir, kuleler sağ tık ile yükseltilebilir. Her yeni dalga düşmanların canı ve hızı artar.
+Bu projede HTML5 canvas ve JavaScript kullanılarak basit bir kule savunma oyunu ornegi bulunmaktadir. Farkli dusman ve kule tipleri icerir, kuleler sag tik ile yukseltilir. Her yeni dalga dusmanlarin cani ve hizi artar.
 
-## Kurulum
+## Calistirma
 
-Gereksinimleri yüklemek için:
+Yerel makinenizde `index.html` dosyasini bir tarayicida acarak oyunu oynayabilirsiniz.
 
-```bash
-pip install -r requirements.txt
-```
+### Kontroller
 
-## Çalıştırma
-
-```bash
-python tower_defense.py
-```
-
-- **Sol tık**: Fareyi kullanarak seçili kule tipini yerleştirir.
-- **Sağ tık**: Üzerine tıkladığınız kuleyi yükseltir.
-- **TAB**: Kule tipleri arasında geçiş yapar.
-- **Space**: Yeni dalgayı başlatır.
-- **ESC**: Oyundan çıkar.
+- **Sol tik**: Secili kule tipini yerlestirir.
+- **Sag tik**: Uzerine tikladiginiz kuleyi gunceller.
+- **TAB**: Kule tipleri arasinda gecis yapar.
+- **Space**: Yeni dalgayi baslatir.
